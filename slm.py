@@ -33,9 +33,14 @@ def carregar_pipeline_base(nome_modelo: str) -> Pipeline:
     return pipeline("text-generation", model=nome_modelo, max_new_tokens=MAX_NOVOS_TOKENS)
 
 
+def _adaptador_valido(diretorio_adaptador: str) -> bool:
+    """Verifica se o diretório do adaptador existe e não está vazio."""
+    return os.path.isdir(diretorio_adaptador) and bool(os.listdir(diretorio_adaptador))
+
+
 def carregar_pipeline(nome_modelo: str, diretorio_adaptador: str) -> Pipeline:
     """Seleciona e carrega o pipeline adequado."""
-    if os.path.exists(diretorio_adaptador):
+    if _adaptador_valido(diretorio_adaptador):
         print("Adapter LoRA encontrado! Carregando modelo personalizado...")
         return carregar_pipeline_com_adaptador(nome_modelo, diretorio_adaptador)
     print("Usando modelo base...")

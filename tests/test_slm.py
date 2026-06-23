@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 
 from slm import (
+    _adaptador_valido,
     limpar_resposta,
     extrair_resposta,
     carregar_pipeline,
@@ -67,22 +68,40 @@ class TestExtrairResposta(unittest.TestCase):
 class TestCarregarPipeline(unittest.TestCase):
     """Testes para as funções de carregamento de pipeline."""
 
-    @patch("slm.os.path.exists", return_value=True)
+    @patch("slm._adaptador_valido", return_value=True)
     @patch("slm.carregar_pipeline_com_adaptador")
     def test_usa_adaptador_quando_existe(
-        self, mock_com_adaptador: MagicMock, mock_exists: MagicMock
+        self, mock_com_adaptador: MagicMock, mock_valido: MagicMock
     ) -> None:
         mock_com_adaptador.return_value = MagicMock()
         carregar_pipeline("modelo", "./adaptador")
         mock_com_adaptador.assert_called_once_with("modelo", "./adaptador")
 
-    @patch("slm.os.path.exists", return_value=False)
+    @patch("slm._adaptador_valido", return_value=False)
     @patch("slm.carregar_pipeline_base")
     def test_usa_base_quando_adaptador_nao_existe(
-        self, mock_base: MagicMock, mock_exists: MagicMock
+        self, mock_base: MagicMock, mock_valido: MagicMock
     ) -> None:
         mock_base.return_value = MagicMock()
         carregar_pipeline("modelo", "./adaptador")
+        mock_base.assert_called_once_with("modelo")
+
+    @patch("slm._adaptador_valido", return_value=False)
+    @patch("slm.carregar_pipeline_base")
+    def test_usa_base_quando_adaptador_vazio(
+        self, mock_base: MagicMock, mock_valido: MagicMock
+    ) -> None:
+        mock_base.return_value = MagicMock()
+        carregar_pipeline("modelo", "./adaptador-vazio")
+        mock_base.assert_called_once_with("modelo")
+
+    @patch("slm._adaptador_valido", return_value=False)
+    @patch("slm.carregar_pipeline_base")
+    def test_usa_base_quando_adaptador_vazio(
+        self, mock_base: MagicMock, mock_valido: MagicMock
+    ) -> None:
+        mock_base.return_value = MagicMock()
+        carregar_pipeline("modelo", "./adaptador-vazio")
         mock_base.assert_called_once_with("modelo")
 
     @patch("slm.pipeline")
