@@ -66,6 +66,3 @@ python finetune.py
 
 Após o treinamento, o `slm.py` detecta automaticamente a pasta `./qwen3-lora-adapter` e carrega o adaptador ao iniciar.
 
-## Observações
-
-- O código remove trechos entre `<think>` e `</think>`, o que pode ser útil para ocultar pensamentos internos gerados pelo modelo.
