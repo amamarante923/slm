@@ -1,39 +1,69 @@
 import os
 import re
 
-ADAPTER_DIR = "./qwen3-lora-adapter"
-MODEL_NAME = "Qwen/Qwen3-0.6B"
+from transformers import pipeline, Pipeline
 
-if os.path.exists(ADAPTER_DIR):
-    print("Adapter LoRA encontrado! Carregando modelo personalizado...")
+DIRETORIO_ADAPTADOR: str = "./qwen3-lora-adapter"
+NOME_MODELO: str = "Qwen/Qwen3-0.6B"
+MAX_NOVOS_TOKENS: int = 2000
+
+
+def carregar_pipeline_com_adaptador(
+    nome_modelo: str, diretorio_adaptador: str
+) -> Pipeline:
+    """Carrega o pipeline com adapter LoRA."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
 
-    tokenizer = AutoTokenizer.from_pretrained(ADAPTER_DIR, trust_remote_code=True)
-    base_model = AutoModelForCausalLM.from_pretrained(
-        MODEL_NAME,
+    tokenizador = AutoTokenizer.from_pretrained(diretorio_adaptador, trust_remote_code=True)
+    modelo_base = AutoModelForCausalLM.from_pretrained(
+        nome_modelo,
         torch_dtype=torch.float32,
         device_map="cpu",
         trust_remote_code=True,
     )
-    model = PeftModel.from_pretrained(base_model, ADAPTER_DIR)
-    model.eval()
+    modelo = PeftModel.from_pretrained(modelo_base, diretorio_adaptador)
+    modelo.eval()
+    return pipeline("text-generation", model=modelo, tokenizer=tokenizador, max_new_tokens=MAX_NOVOS_TOKENS)
 
-    from transformers import pipeline
-    pipe = pipeline('text-generation', model=model, tokenizer=tokenizer, max_new_tokens=2000)
-else:
+
+def carregar_pipeline_base(nome_modelo: str) -> Pipeline:
+    """Carrega o pipeline com o modelo base."""
+    return pipeline("text-generation", model=nome_modelo, max_new_tokens=MAX_NOVOS_TOKENS)
+
+
+def carregar_pipeline(nome_modelo: str, diretorio_adaptador: str) -> Pipeline:
+    """Seleciona e carrega o pipeline adequado."""
+    if os.path.exists(diretorio_adaptador):
+        print("Adapter LoRA encontrado! Carregando modelo personalizado...")
+        return carregar_pipeline_com_adaptador(nome_modelo, diretorio_adaptador)
     print("Usando modelo base...")
-    from transformers import pipeline
-    pipe = pipeline('text-generation', model=MODEL_NAME, max_new_tokens=2000)
+    return carregar_pipeline_base(nome_modelo)
 
-while True:
-    start = input("Enter your prompt (or type 'exit' to quit): ")
-    if start.lower() == 'exit':
-        break
-    messages = [
-        {"role": "user", "content": start},
-    ]
-    result = pipe(messages)[0]['generated_text'][1]['content']
-    result = re.sub(r'ground.*?ground', '', result, flags=re.DOTALL)
-    print(result)
+
+def limpar_resposta(texto: str) -> str:
+    """Remove artefatos de geração da resposta."""
+    return re.sub(r"ground.*?ground", "", texto, flags=re.DOTALL)
+
+
+def extrair_resposta(resultado: list) -> str:
+    """Extrai o conteúdo da resposta gerada pelo modelo."""
+    return resultado[0]["generated_text"][1]["content"]
+
+
+def executar_chat(pipe: Pipeline) -> None:
+    """Loop principal de interação com o usuário."""
+    while True:
+        entrada = input("Enter your prompt (or type 'exit' to quit): ")
+        if entrada.lower() == "exit":
+            break
+        mensagens = [{"role": "user", "content": entrada}]
+        resultado = pipe(mensagens)
+        resposta = limpar_resposta(extrair_resposta(resultado))
+        print(resposta)
+
+
+if __name__ == "__main__":
+    pipe = carregar_pipeline(NOME_MODELO, DIRETORIO_ADAPTADOR)
+    executar_chat(pipe)
